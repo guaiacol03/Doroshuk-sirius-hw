@@ -23,9 +23,10 @@ parser.add_argument('--export_dpi', type=int, default=100,
                     help='Resolution to plot graphs at (default 100)')
 parser.add_argument('--adapters', type=str,
                     help='File with adapters to remove (if none skip)', required=False)
+parser.add_argument('--export_fastq', action='store_true', help='Export trimmed fastq file')
 parser.add_argument('--adapters_len', type=int,
                     help='Minimal length of adapters (>=3)', default=3, required=False)
-parser.add_argument('--mode', choices=['base', 'strip'], nargs='+',
+parser.add_argument('--mode', choices=['base', 'strip', 'plot'], nargs='+',
                     help='Modes to run the program (space-separated)', required=True)
 args = parser.parse_args()
 
@@ -79,8 +80,8 @@ def run():
     #     raise Exception("Rows " + str(failedRows) + " contain invalid metadata")
     print("Fasta file parsed without errors\n")
 
-
 arg_exp_frame = False
+export_path = None
 if args.export is not None:
     export_path = args.export
     if os.path.exists(export_path):
@@ -95,27 +96,12 @@ if args.export is not None:
 run()
 if 'base' in args.mode:
     v = StatWorker(parsed)
+    print("-- General statistics --")
+    print("Input file: " + args.input.split('/')[-1])
     x = ExportHelper.print_stat(parsed, v, export_frame = arg_exp_frame)
-    if args.export is not None:
+    if export_path is not None:
         if arg_exp_frame:
             exp = pd.concat((exp, x), ignore_index=True)
-
-        ex_dpi = args.export_dpi
-        if not args.export_merge:
-            ExportHelper.plot_save(v.plot_len_distribution, export_path + "/pl_len_distribution.png", dpi = ex_dpi)
-            ExportHelper.plot_save(v.plot_gc_distribution, export_path + "/pl_gc_distribution.png", dpi = ex_dpi)
-            ExportHelper.plot_save(v.plot_nucl_positions, export_path + "/pl_nucl_positions.png", dpi = ex_dpi)
-            ExportHelper.plot_save(v.plot_qual_distribution, export_path + "/pl_qual_distribution.png", dpi = ex_dpi)
-            ExportHelper.plot_save(v.plot_qual_positions, export_path + "/pl_qual_positions.png", dpi = ex_dpi)
-        else:
-            ExportHelper.plot_pack_save(
-                [
-                    v.plot_len_distribution,
-                    v.plot_gc_distribution,
-                    v.plot_nucl_positions,
-                    v.plot_qual_distribution,
-                    v.plot_qual_positions
-                ], export_path + "/pl_merge.png", dpi = ex_dpi)
 if 'strip' in args.mode:
     if args.adapters is None:
         raise Exception("Mode \"strip\" requires adapters")
@@ -150,14 +136,38 @@ if 'strip' in args.mode:
             print('Invalid input')
     if arg_exp_frame: exp.loc[len(exp)] = {"Property": "Min. inclusion", "Value": _adapters_len}
 
-    f = stripper.slice_seq(parsed.Sequence.values, ret, return_finals=arg_exp_frame)
+    f = stripper.slice_seq([parsed.Sequence.values, parsed.Quality.values], ret, return_finals=arg_exp_frame)
     if arg_exp_frame:
-        parsed["Sequence"] = f[0]
+        parsed["Sequence"] = f[0][0]
+        parsed["Quality"] = f[0][1]
         exp = pd.concat((exp, ExportHelper.export_slicing_res(stripper, ret, (f[1], f[2]))), ignore_index=True)
         print(exp)
     else:
-        parsed["Sequence"] = f
+        parsed["Sequence"] = f[0][0]
+        parsed["Quality"] = f[0][1]
     print("Slicing finished")
+
+    if args.export_fastq and (export_path is not None):
+        print("Composing fastq file...")
+        ExportHelper.compose_fastq(parsed, export_path + "/fastq_n.fastq")
+        print("Saved successfully")
+if ('plot' in args.mode) and (export_path is not None):
+    ex_dpi = args.export_dpi
+    if not args.export_merge:
+        ExportHelper.plot_save(v.plot_len_distribution, export_path + "/pl_len_distribution.png", dpi=ex_dpi)
+        ExportHelper.plot_save(v.plot_gc_distribution, export_path + "/pl_gc_distribution.png", dpi=ex_dpi)
+        ExportHelper.plot_save(v.plot_nucl_positions, export_path + "/pl_nucl_positions.png", dpi=ex_dpi)
+        ExportHelper.plot_save(v.plot_qual_distribution, export_path + "/pl_qual_distribution.png", dpi=ex_dpi)
+        ExportHelper.plot_save(v.plot_qual_positions, export_path + "/pl_qual_positions.png", dpi=ex_dpi)
+    else:
+        ExportHelper.plot_pack_save(
+            [
+                v.plot_len_distribution,
+                v.plot_gc_distribution,
+                v.plot_nucl_positions,
+                v.plot_qual_distribution,
+                v.plot_qual_positions
+            ], export_path + "/pl_merge.png", dpi=ex_dpi)
 
 if arg_exp_frame:
     exp.to_csv(export_path + "/stats.csv")

@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from main import args, VALID_NUCLEOTIDES
-
+VALID_NUCLEOTIDES = np.array(["A", "T", "G", "C"], dtype="S1")
 
 class ExportHelper:
     @staticmethod
@@ -31,9 +30,8 @@ class ExportHelper:
     @staticmethod
     def print_stat(data, worker, export_frame=False):
         if export_frame : exp = pd.DataFrame(columns=["Property", "Value"])
-        print("-- General statistics --")
-        print("Input file: " + args.input.split('/')[-1])
         print("Records: " + str(data.shape[0]))
+        if export_frame: exp.loc[len(exp)] = {"Property": "Total sequences", "Value": data.shape[0]}
 
         lbins = np.bincount(worker.SeqLengths)
         print("Most common length: " + str(np.argmax(lbins)))
@@ -72,3 +70,14 @@ class ExportHelper:
             for t, v in enumerate(tN):
                 if v > 0:
                     print("\t" + str(t) + " symbols in " + str(v) + " sequences")
+
+    @staticmethod
+    def compose_fastq(tab, save_loc):
+        exp_strings = []
+        for i, rec in tab.iterrows():
+            exp_strings.append(rec["Data"])
+            exp_strings.append("".join([d.decode('utf-8') for d in rec["Sequence"]]))
+            exp_strings.append("+")
+            exp_strings.append("".join([chr(v) for v in rec["Quality"]]))
+        with open(save_loc, "w") as out:
+            out.write("\n".join(exp_strings))

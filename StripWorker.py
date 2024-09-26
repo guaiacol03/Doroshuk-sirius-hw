@@ -54,21 +54,24 @@ class StripWorker:
             n_pos.insert(i, (n_start, n_end))
         return n_pos
 
-    def slice_seq(self, sequences, slice_pos, return_finals=False):
+    def slice_seq(self, data, slice_pos, return_finals=False):
         # join slice points of all adapters and select the largest
         j_table_pos = (pd.concat([p[0] for p in slice_pos], ignore_index=True)
                        .groupby("Sequence", as_index = False).max())
         j_table_neg = (pd.concat([p[1] for p in slice_pos], ignore_index=True)
                        .groupby("Sequence", as_index = False).max())
 
-        for index, values in j_table_pos.iterrows():
-            t = int(values["Sequence"])
-            sequences[t] = sequences[t][int(values["Offset"]):]  # slice from the start
-        for name, values in j_table_neg.iterrows():
-            t = int(values["Sequence"])
-            sequences[t] = sequences[t][:-int(values["Offset"])]  # slice from the end
+        res_data = []
+        for i, seqs in enumerate(data):
+            for index, values in j_table_pos.iterrows():
+                t = int(values["Sequence"])
+                seqs[t] = seqs[t][int(values["Offset"]):]  # slice from the start
+            for name, values in j_table_neg.iterrows():
+                t = int(values["Sequence"])
+                seqs[t] = seqs[t][:-int(values["Offset"])]  # slice from the end
+            res_data.insert(i, seqs)
 
         if not return_finals:
-            return sequences
+            return (res_data,)
         else:
-            return sequences, j_table_pos, j_table_neg
+            return res_data, j_table_pos, j_table_neg

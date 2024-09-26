@@ -1,5 +1,7 @@
 import argparse
 import os
+from os.path import exists
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -18,6 +20,8 @@ parser.add_argument('--export_csv', action='store_true', help='Export csv file w
 parser.add_argument('--export_merge', action='store_true', help='Export graphs as a single file')
 parser.add_argument('--export', type=str,
                     help='Folder to export results to (all export args are ignored otherwise)', required=False)
+parser.add_argument('--export_dpi', type=int, default=100,
+                    help='Resolution to plot graphs at (default 100)')
 parser.add_argument('--adapters', type=str,
                     help='File with adapters to remove (if none skip)', required=False)
 parser.add_argument('--adapters_len', type=int,
@@ -78,15 +82,15 @@ def run():
 
 class ExportHelper:
     @staticmethod
-    def plot_save(delegate, save_loc):
+    def plot_save(delegate, save_loc, **kwargs):
         plt.figure()
         fig, ax = plt.subplots()
         delegate(ax)
-        plt.savefig(save_loc)
+        plt.savefig(save_loc, **kwargs)
         plt.close()
 
     @staticmethod
-    def plot_pack_save(delegates, save_loc):
+    def plot_pack_save(delegates, save_loc, **kwargs):
         fig, axs = plt.subplots(2, 3, figsize=(16, 8))
         del_position = 0
         for i in range(axs.shape[0]):
@@ -97,7 +101,7 @@ class ExportHelper:
                 else:
                     fig.delaxes(axs[i, j])
         plt.tight_layout()
-        plt.savefig(save_loc)
+        plt.savefig(save_loc, **kwargs)
 
     @staticmethod
     def print_stat(data, worker, export_frame=False):
@@ -147,8 +151,11 @@ class ExportHelper:
 arg_exp_frame = False
 if args.export is not None:
     export_path = args.export
-    if not os.path.isdir(export_path):
-        raise Exception("Export path is not a directory")
+    if os.path.exists(export_path):
+        if not os.path.isdir(export_path):
+            raise Exception("Export path is not a directory")
+    else:
+        os.mkdir(export_path)
 
     arg_exp_frame = args.export_csv
     if arg_exp_frame: exp = pd.DataFrame(columns=["Property", "Value"])
@@ -161,12 +168,13 @@ if 'base' in args.mode:
         if arg_exp_frame:
             exp = pd.concat((exp, x), ignore_index=True)
 
+        ex_dpi = args.export_dpi
         if not args.export_merge:
-            ExportHelper.plot_save(v.plot_len_distribution, export_path + "/pl_len_distribution.png")
-            ExportHelper.plot_save(v.plot_gc_distribution, export_path + "/pl_gc_distribution.png")
-            ExportHelper.plot_save(v.plot_nucl_positions, export_path + "/pl_nucl_positions.png")
-            ExportHelper.plot_save(v.plot_qual_distribution, export_path + "/pl_qual_distribution.png")
-            ExportHelper.plot_save(v.plot_qual_positions, export_path + "/pl_qual_positions.png")
+            ExportHelper.plot_save(v.plot_len_distribution, export_path + "/pl_len_distribution.png", dpi = ex_dpi)
+            ExportHelper.plot_save(v.plot_gc_distribution, export_path + "/pl_gc_distribution.png", dpi = ex_dpi)
+            ExportHelper.plot_save(v.plot_nucl_positions, export_path + "/pl_nucl_positions.png", dpi = ex_dpi)
+            ExportHelper.plot_save(v.plot_qual_distribution, export_path + "/pl_qual_distribution.png", dpi = ex_dpi)
+            ExportHelper.plot_save(v.plot_qual_positions, export_path + "/pl_qual_positions.png", dpi = ex_dpi)
         else:
             ExportHelper.plot_pack_save(
                 [
@@ -175,7 +183,7 @@ if 'base' in args.mode:
                     v.plot_nucl_positions,
                     v.plot_qual_distribution,
                     v.plot_qual_positions
-                ], export_path + "/pl_merge.png")
+                ], export_path + "/pl_merge.png", dpi = ex_dpi)
 if 'strip' in args.mode:
     if args.adapters is None:
         raise Exception("Mode \"strip\" requires adapters")

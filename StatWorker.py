@@ -37,7 +37,6 @@ class StatWorker:
             lambda seq: np.concatenate((seq, np.full(max_len - len(seq), np.nan)))).values
         qlong_arr = np.array(list(qlong))
         self.PosMeanQuality = np.nanmean(qlong_arr, axis=0)
-        print(1)
 
     @staticmethod
     def _count_nucl_rows(row):
@@ -62,7 +61,6 @@ class StatWorker:
         canvas.set_title("Distr. of GC content")
         canvas.set_xlabel("GC content (%)")
         canvas.set_ylabel("No. of sequences")
-        print(1)
 
     def plot_nucl_positions(self, canvas):
         arr_p = np.apply_along_axis(lambda row: [float(k) / np.sum(row) for k in row], axis=1, arr=self.NuclPosFrequency)
@@ -82,7 +80,6 @@ class StatWorker:
         canvas.set_title("Distr. of sequence mean quality")
         canvas.set_xlabel("Avg. quality (phred)")
         canvas.set_ylabel("No. of sequences")
-        print(1)
 
     def plot_qual_positions(self, canvas):
         pval = self.PosMeanQuality
@@ -90,5 +87,4 @@ class StatWorker:
         canvas.set_xlabel("Sequence pos.")
         canvas.set_ylabel("Avg. quality (phred)")
         canvas.plot(range(pval.shape[0]), pval)
-        print(1)
 

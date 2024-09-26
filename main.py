@@ -142,7 +142,6 @@ if 'strip' in args.mode:
         parsed["Sequence"] = f[0][0]
         parsed["Quality"] = f[0][1]
         exp = pd.concat((exp, ExportHelper.export_slicing_res(stripper, ret, (f[1], f[2]))), ignore_index=True)
-        print(exp)
     else:
         parsed["Sequence"] = f[0][0]
         parsed["Quality"] = f[0][1]
@@ -150,7 +149,7 @@ if 'strip' in args.mode:
 
     if args.export_fastq and (export_path is not None):
         print("Composing fastq file...")
-        ExportHelper.compose_fastq(parsed, export_path + "/fastq_n.fastq")
+        ExportHelper.compose_fastq(parsed, export_path + "/fastq_sliced.fastq")
         print("Saved successfully")
 if ('plot' in args.mode) and (export_path is not None):
     ex_dpi = args.export_dpi

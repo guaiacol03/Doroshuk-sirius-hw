@@ -5,6 +5,9 @@ from urllib.parse import urlparse, parse_qs
 import re
 import argparse
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('input', type=str,
                     help='Card URL')

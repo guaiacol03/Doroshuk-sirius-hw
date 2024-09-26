@@ -14,9 +14,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('input', type=str,
                     help='Input fastq file')
 parser.add_argument('--noask', action='store_true', help='Don\'t ask for confirmation')
+parser.add_argument('--export_csv', action='store_true', help='Export csv file with results')
+parser.add_argument('--export_merge', action='store_true', help='Export graphs as a single file')
+parser.add_argument('--export', type=str,
+                    help='Folder to export results to (all export args are ignored otherwise)', required=False)
 parser.add_argument('--adapters', type=str,
                     help='File with adapters to remove (if none skip)', required=False)
-parser.add_argument('--adapters-len', type=int,
+parser.add_argument('--adapters_len', type=int,
                     help='Minimal length of adapters (>=3)', default=3, required=False)
 parser.add_argument('--mode', choices=['base', 'strip'], nargs='+',
                     help='Modes to run the program (space-separated)', required=True)
@@ -122,12 +126,11 @@ class ExportHelper:
 
     @staticmethod
     def export_slicing_res(worker, slice_tab, final_tab):
-        exp = pd.DataFrame(columns=["Property", "Value"])
-        exp.loc[len(exp)] = {"Property": "No of adapters", "Value": len(worker.adapters)}
+        exp = final_tab[0].merge(final_tab[1], how='outer', on="Sequence", suffixes=("_pos", "_neg"))
+        return exp
 
     @staticmethod
-    def print_slicing_data(worker, slice_tab, export_frame=False):
-        if export_frame : exp = pd.DataFrame(columns=["Property", "Value"])
+    def print_slicing_data(worker, slice_tab):
         for i, adapter in enumerate(worker.adapters):
             print("For adapter " + str(i) + " (" + "".join([nucl.decode('utf-8') for nucl in adapter]) + "): ")
             print("* In " + str(slice_tab[i][0].shape[0]) + " sequences from the start")
@@ -141,19 +144,38 @@ class ExportHelper:
                 if v > 0:
                     print("\t" + str(t) + " symbols in " + str(v) + " sequences")
 
+arg_exp_frame = False
+if args.export is not None:
+    export_path = args.export
+    if not os.path.isdir(export_path):
+        raise Exception("Export path is not a directory")
+
+    arg_exp_frame = args.export_csv
+    if arg_exp_frame: exp = pd.DataFrame(columns=["Property", "Value"])
+
 run()
 if 'base' in args.mode:
-    # process_base()
     v = StatWorker(parsed)
-    # ExportHelper.plot_pack_save(
-    #     [
-    #         v.plot_len_distribution,
-    #         v.plot_gc_distribution,
-    #         v.plot_nucl_positions,
-    #         v.plot_qual_distribution,
-    #         v.plot_qual_positions
-    #     ], "distr.jpg")
-    ExportHelper.print_stat(parsed, v)
+    x = ExportHelper.print_stat(parsed, v, export_frame = arg_exp_frame)
+    if args.export is not None:
+        if arg_exp_frame:
+            exp = pd.concat((exp, x), ignore_index=True)
+
+        if not args.export_merge:
+            ExportHelper.plot_save(v.plot_len_distribution, export_path + "/pl_len_distribution.png")
+            ExportHelper.plot_save(v.plot_gc_distribution, export_path + "/pl_gc_distribution.png")
+            ExportHelper.plot_save(v.plot_nucl_positions, export_path + "/pl_nucl_positions.png")
+            ExportHelper.plot_save(v.plot_qual_distribution, export_path + "/pl_qual_distribution.png")
+            ExportHelper.plot_save(v.plot_qual_positions, export_path + "/pl_qual_positions.png")
+        else:
+            ExportHelper.plot_pack_save(
+                [
+                    v.plot_len_distribution,
+                    v.plot_gc_distribution,
+                    v.plot_nucl_positions,
+                    v.plot_qual_distribution,
+                    v.plot_qual_positions
+                ], export_path + "/pl_merge.png")
 if 'strip' in args.mode:
     if args.adapters is None:
         raise Exception("Mode \"strip\" requires adapters")
@@ -171,7 +193,7 @@ if 'strip' in args.mode:
     ret = stripper.check_adapters(parsed.Sequence.values, _adapters_len)
     while True:
         ret = stripper.filter_results(ret, _adapters_len)
-        stripper.print_results(ret)
+        ExportHelper.print_slicing_data(stripper, ret)
         if args.noask:
             break
 
@@ -186,8 +208,16 @@ if 'strip' in args.mode:
                 _adapters_len = 3
         else:
             print('Invalid input')
+    if arg_exp_frame: exp.loc[len(exp)] = {"Property": "Min. inclusion", "Value": _adapters_len}
 
-    f = stripper.slice_seq(parsed.Sequence.values, ret)
-    parsed["Sequence"] = f
+    f = stripper.slice_seq(parsed.Sequence.values, ret, return_finals=arg_exp_frame)
+    if arg_exp_frame:
+        parsed["Sequence"] = f[0]
+        exp = pd.concat((exp, ExportHelper.export_slicing_res(stripper, ret, (f[1], f[2]))), ignore_index=True)
+        print(exp)
+    else:
+        parsed["Sequence"] = f
     print("Slicing finished")
 
+if arg_exp_frame:
+    exp.to_csv(export_path + "/stats.csv")

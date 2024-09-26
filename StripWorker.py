@@ -14,6 +14,8 @@ class StripWorker:
             if not np.isin(h, VALID_NUCLEOTIDES).all():
                 raise Exception("Adapter " + str(i) + " contains invalid nucleotides (not A,T,G,C)")
             self.adapters.insert(i, h)
+        if len(self.adapters) < 1:
+            raise Exception("Adapters file is empty")
 
         self.adapters_len = max([len(seq) for seq in self.adapters])
 

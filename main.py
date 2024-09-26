@@ -54,10 +54,11 @@ def run():
     parsed = pd.DataFrame(input, index=None, columns=["Data", "Sequence", "Quality"])
     # process sequences
     parsed.Sequence = parsed.Sequence.apply(lambda seq: np.fromiter(seq, dtype="S1")) # nucleotides as byte array
-    nucCheckRow = parsed.Sequence.apply(lambda seq: np.isin(seq, VALID_NUCLEOTIDES).all()) # check if all nucleotides are valid
+    checkNucs = np.append(VALID_NUCLEOTIDES, b'N')
+    nucCheckRow = parsed.Sequence.apply(lambda seq: np.isin(seq, checkNucs).all()) # check if all nucleotides are valid
     failedRows = nucCheckRow[nucCheckRow == False].index.values
     if len(failedRows) > 0:
-        raise Exception("Rows " + str(failedRows) + " contain invalid nucleotides (not A,T,G,C)")
+        raise Exception("Rows " + str(failedRows) + " contain invalid nucleotides (not A,T,G,C or N)")
     # process quality
     parsed.Quality = parsed.Quality.apply(lambda seq: np.fromiter((ord(sym) for sym in seq), dtype=int))
     # def conv_meta_to_dict(meta):

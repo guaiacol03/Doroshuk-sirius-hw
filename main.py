@@ -117,9 +117,9 @@ if 'strip' in args.mode:
     if _adapters_len < 3:
         print('Adapters length is too small, defauling to 3')
 
-    ret = stripper.check_adapters(parsed.Sequence.values, _adapters_len)
+    s_ret = stripper.check_adapters(parsed.Sequence.values, _adapters_len)
     while True:
-        ret = stripper.filter_results(ret, _adapters_len)
+        ret = stripper.filter_results(s_ret, _adapters_len)
         ExportHelper.print_slicing_data(stripper, ret)
         if args.noask:
             break
@@ -129,6 +129,7 @@ if 'strip' in args.mode:
         if ans in ['y', 'Y']:
             break
         elif ans in ['n', 'N']:
+            print("Enter new minimal length:")
             _adapters_len = int(input())
             if _adapters_len < 3:
                 print('Adapters length is too small, defauling to 3')

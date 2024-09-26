@@ -27,8 +27,8 @@ class StripWorker:
         slice_pos = []
         for i, adapter in enumerate(self.adapters):
             # matrix - if there is a match between chain and an adapter offset by column id
-            eq_matrix_pos = np.zeros((len(seq), self.adapters_len + 1), dtype=bool)
-            eq_matrix_neg = np.zeros((len(seq), self.adapters_len + 1), dtype=bool)
+            eq_matrix_pos = np.full((len(seq), self.adapters_len + 1), False, dtype=bool)
+            eq_matrix_neg = np.full((len(seq), self.adapters_len + 1), False, dtype=bool)
             for offset in range(1, len(adapter) + 1):
                 x_start = seq_slice_start[:, :offset] # which of first/last OFFSET elements of chain
                 x_end = seq_slice_end[:, :offset]
